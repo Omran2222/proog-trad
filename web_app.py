@@ -475,6 +475,61 @@ async def api_auto_start_status():
     }
 
 
+@app.post("/api/cancel-orders")
+async def api_cancel_orders():
+    """إلغاء جميع الأوامر المعلقة"""
+    if not state.initialized:
+        return {"ok": False, "msg": "البوت لم يتهيأ"}
+    try:
+        result = state.data_engine.cancel_all_orders()
+        state.add_log("WARNING", "🚫 تم إلغاء جميع الأوامر المعلقة")
+        return {"ok": True, "msg": "تم إلغاء جميع الأوامر"}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@app.post("/api/close/{symbol}")
+async def api_close_position(symbol: str):
+    """إغلاق مركز محدد"""
+    if not state.initialized:
+        return {"ok": False, "msg": "البوت لم يتهيأ"}
+    try:
+        result = state.data_engine.close_position(symbol.upper())
+        if "error" in result:
+            return {"ok": False, "msg": result["error"]}
+        state.risk_manager.close_trade(symbol.upper(), 0, "manual_close")
+        state.add_log("INFO", f"📝 إغلاق يدوي: {symbol.upper()}")
+        return {"ok": True, "msg": f"تم إغلاق {symbol.upper()}"}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@app.post("/api/close-all")
+async def api_close_all():
+    """إغلاق جميع المراكز بدون إيقاف البوت"""
+    if not state.initialized:
+        return {"ok": False, "msg": "البوت لم يتهيأ"}
+    try:
+        state.data_engine.close_all_positions()
+        state.data_engine.cancel_all_orders()
+        state.add_log("WARNING", "📝 تم إغلاق جميع المراكز والأوامر")
+        return {"ok": True, "msg": "تم إغلاق الكل"}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@app.get("/api/orders")
+async def api_get_orders():
+    """جلب الأوامر المعلقة"""
+    if not state.initialized:
+        return {"ok": False, "orders": []}
+    try:
+        orders = state.data_engine.get_open_orders()
+        return {"ok": True, "orders": orders}
+    except Exception as e:
+        return {"ok": False, "orders": [], "msg": str(e)}
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
     uvicorn.run(
