@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+.env.example
+.git/
+.github/
+.vscode/
+*.md
+docker-compose.yml
+fly.toml
+bot_*.log
+trades_log.json

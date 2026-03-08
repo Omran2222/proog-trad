@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════
+# Fly.io Configuration - Smart Scalper Bot
+# النشر: fly deploy
+# ═══════════════════════════════════════════════════════
+
+app = 'proog-trad'
+primary_region = 'iad'  # واشنطن (أقرب لسوق NYSE)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false    # ⚠️ لا تتوقف أبداً - البوت يعمل 24/7
+  auto_start_machines = true
+  min_machines_running = 1       # دائماً آلة واحدة على الأقل
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 50
+    soft_limit = 25
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+
+[checks]
+  [checks.health]
+    port = 8080
+    type = "http"
+    interval = "30s"
+    timeout = "5s"
+    path = "/health"
