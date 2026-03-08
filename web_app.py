@@ -15,9 +15,11 @@ import time
 from datetime import datetime
 from typing import List, Set
 
+import secrets
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form
+from fastapi.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
@@ -33,6 +35,59 @@ from loss_guardian import LossGuardian
 AUTO_START_TRADING = os.getenv("AUTO_START_TRADING", "false").lower() == "true"
 AUTO_RESTART_ON_CRASH = os.getenv("AUTO_RESTART_ON_CRASH", "true").lower() == "true"
 MAX_RESTART_ATTEMPTS = int(os.getenv("MAX_RESTART_ATTEMPTS", "10"))
+
+# ── Auth ─────────────────────────────────────────────────────
+BOT_PASSWORD = os.getenv("BOT_PASSWORD", "")
+valid_sessions: set = set()
+
+_LOGIN_HTML = """
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول - Proog Trad</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen">
+<div class="bg-slate-800 border border-slate-700 rounded-xl p-8 w-full max-w-sm shadow-2xl">
+  <div class="text-center mb-6">
+    <div class="text-5xl mb-3">🤖</div>
+    <h1 class="text-2xl font-bold text-indigo-400">Proog Trad Bot</h1>
+    <p class="text-slate-500 text-sm mt-1">لوحة تحكم خاصة</p>
+  </div>
+  {error}
+  <form method="post" action="/login">
+    <label class="block text-slate-400 text-sm mb-2">كلمة المرور</label>
+    <input type="password" name="password" autofocus required placeholder="••••••••"
+      class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-indigo-500 text-right">
+    <button type="submit"
+      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition">
+      دخول
+    </button>
+  </form>
+</div>
+</body>
+</html>
+"""
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    OPEN = {"/login", "/health", "/favicon.ico"}
+
+    async def dispatch(self, request, call_next):
+        if not BOT_PASSWORD:
+            return await call_next(request)
+        path = request.url.path
+        if path in self.OPEN or path.startswith("/static"):
+            return await call_next(request)
+        token = request.cookies.get("bot_session")
+        if token and token in valid_sessions:
+            return await call_next(request)
+        if request.headers.get("upgrade", "").lower() == "websocket":
+            from starlette.responses import Response
+            return Response(status_code=403)
+        return RedirectResponse("/login", status_code=302)
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO,
@@ -108,6 +163,7 @@ async def watchdog_loop():
 
 
 app = FastAPI(title="Smart Scalper Bot", version="2.0", lifespan=lifespan)
+app.add_middleware(AuthMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -355,6 +411,34 @@ async def build_snapshot() -> dict:
 
 
 # ── Routes ─────────────────────────────────────────────────────
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    return HTMLResponse(_LOGIN_HTML.replace("{error}", ""))
+
+
+@app.post("/login")
+async def login_submit(password: str = Form(...)):
+    if BOT_PASSWORD and password == BOT_PASSWORD:
+        token = secrets.token_hex(32)
+        valid_sessions.add(token)
+        response = RedirectResponse("/", status_code=302)
+        response.set_cookie("bot_session", token, httponly=True, secure=True,
+                            samesite="lax", max_age=86400 * 30)
+        return response
+    error_html = '<p class="text-red-400 text-sm text-center mb-3">❌ كلمة المرور خاطئة</p>'
+    return HTMLResponse(_LOGIN_HTML.replace("{error}", error_html), status_code=401)
+
+
+@app.post("/logout")
+async def logout(request: Request):
+    token = request.cookies.get("bot_session")
+    if token:
+        valid_sessions.discard(token)
+    resp = RedirectResponse("/login", status_code=302)
+    resp.delete_cookie("bot_session")
+    return resp
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})

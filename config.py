@@ -45,9 +45,9 @@ class RiskConfig:
     max_positions: int = 2                     # Max open positions (CIFR & IREN only)
     
     # ─── Stop Loss / Take Profit (Weekly - Strict) ───────────
-    default_stop_loss_pct: float = 5.0         # وقف خسارة أساسي 5%-8%
-    trailing_stop_pct: float = 2.5             # تتبع الربح بـ 2.5%
-    take_profit_pct: float = 10.0              # أخذ أرباح جزئي عند 10% (استهداف 20-25%)
+    default_stop_loss_pct: float = 8.0         # وقف خسارة 8% - CIFR/IREN تتحرك 10%+ يومياً
+    trailing_stop_pct: float = 5.0             # تتبع أوسع لالتقاط حركات 20-30%
+    take_profit_pct: float = 20.0              # أخذ أرباح عند 20% (المتداولون الناجحون يصبرون)
 
     # ─── Protection Filters ─────────────────────────────────────
     min_volume: int = 1_000_000                # Minimum volume
@@ -55,7 +55,7 @@ class RiskConfig:
     max_spread_pct: float = 1.0                # Max spread (%) 
 
     # ─── Timing Protection ─────────────────────────────────────
-    avoid_first_minutes: int = 15              # Avoid first 15 minutes
+    avoid_first_minutes: int = 30              # CIFR/IREN عالية التذبذب في الـ 30 دقيقة الأولى
     avoid_last_minutes: int = 15               # Avoid last 15 minutes
 
     # ─── Emergency Stop ──────────────────────────────────────
