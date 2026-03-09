@@ -258,6 +258,18 @@ class BotState:
         cycle = 0
         while self.running and not self._stop_event.is_set():
             try:
+                # ── فحص يوم العمل (الاثنين=0 .. الجمعة=4) ──
+                today = datetime.now().weekday()
+                if today >= 5:  # السبت=5، الأحد=6
+                    day_name = "السبت" if today == 5 else "الأحد"
+                    self.add_log("INFO", f"📅 اليوم {day_name} - عطلة نهاية الأسبوع، البوت في وضع السبات")
+                    # نوم حتى منتصف الليل + ساعة إضافية
+                    for _ in range(120):  # ~60 دقيقة
+                        if self._stop_event.is_set():
+                            return
+                        time.sleep(30)
+                    continue
+
                 if not self.data_engine.is_market_open():
                     clock = self.data_engine.get_market_clock()
                     next_open = clock.get("next_open", "?")
@@ -419,21 +431,11 @@ async def build_snapshot() -> dict:
                 "day_trades": acc.get("day_trade_count", 0),
             }
 
-        # Market Status Label
-        is_open = state.data_engine.is_market_open() if state.data_engine else False
-        market_label = "مفتوح ✅" if is_open else "مغلق ⛔"
-        if not is_open:
-            from zoneinfo import ZoneInfo
-            ny_time = datetime.now(ZoneInfo('US/Eastern'))
-            if ny_time.weekday() >= 5:
-                market_label = "عطلة الأسبوع 💤"
-
         return {
             "type": "snapshot",
             "time": datetime.now().strftime("%H:%M:%S"),
             "bot_running": state.running,
-            "market_open": is_open,
-            "market_label": market_label,
+            "market_open": state.data_engine.is_market_open() if state.data_engine else False,
             "prices": prices,
             "portfolio": portfolio,
             "positions": positions,

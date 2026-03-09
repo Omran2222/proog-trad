@@ -173,6 +173,18 @@ class SmartScalperBot:
             try:
                 cycle += 1
                 
+                # ── فحص يوم العمل (الاثنين=0 .. الجمعة=4) ──
+                from datetime import datetime as _dt
+                today = _dt.now().weekday()
+                if today >= 5:  # السبت أو الأحد
+                    day_name = "السبت" if today == 5 else "الأحد"
+                    self.logger.info(f"📅 اليوم {day_name} - عطلة نهاية الأسبوع، البوت في وضع السبات")
+                    for _ in range(120):  # ~60 دقيقة
+                        if self._stop_event.is_set():
+                            return
+                        time.sleep(30)
+                    continue
+
                 # Check Market Status
                 if not self.data_engine.is_market_open():
                     self.logger.info("💤 Market Closed - Waiting...")
@@ -217,21 +229,6 @@ class SmartScalperBot:
 
     def _wait_for_market(self):
         """Wait for market open"""
-        from zoneinfo import ZoneInfo
-        from datetime import datetime
-        
-        ny_time = datetime.now(ZoneInfo('US/Eastern'))
-        
-        # إذا كان اليوم السبت أو الأحد (بتوقيت نيويورك)
-        if ny_time.weekday() >= 5:
-            self.logger.info("💤 عطلة نهاية الأسبوع (السبت/الأحد)! البوت في وضع السبات حتى يوم الاثنين...")
-            # ينام لمدة ساعة ويفحص الإيقاف كل دقيقة
-            for _ in range(60):
-                if self._stop_event.is_set():
-                    return
-                time.sleep(60)
-            return
-
         clock = self.data_engine.get_market_clock()
         next_open = clock.get("next_open", "Unknown")
         self.logger.info(f"⏰ Market Opens: {next_open}")

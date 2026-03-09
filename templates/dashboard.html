@@ -239,13 +239,8 @@
                 ui.statEquity.textContent = `$${data.account.equity.toLocaleString()}`;
                 ui.statBP.textContent = `$${data.account.buying_power.toLocaleString()}`;
             }
-            ui.statMarket.textContent = data.market_label || (data.market_open ? "مفتوح ✅" : "مغلق ⛔");
-            
-            if (data.market_label === "عطلة الأسبوع 💤") {
-                ui.statMarket.className = 'text-xl font-bold text-slate-400';
-            } else {
-                ui.statMarket.className = `text-xl font-bold ${data.market_open ? 'text-green-400' : 'text-red-400'}`;
-            }
+            ui.statMarket.textContent = data.market_open ? "مفتوح ✅" : "مغلق ⛔";
+            ui.statMarket.className = `text-xl font-bold ${data.market_open ? 'text-green-400' : 'text-red-400'}`;
 
             /* ─── Prices (fix: show best available price) ─── */
             if(data.prices) {
