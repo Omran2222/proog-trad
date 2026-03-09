@@ -44,10 +44,10 @@ class RiskConfig:
     max_total_exposure_pct: float = 50.0       # Max total exposure (%)
     max_positions: int = 2                     # Max open positions (CIFR & IREN only)
     
-    # ─── Stop Loss / Take Profit (Weekly - Strict) ───────────
-    default_stop_loss_pct: float = 8.0         # وقف خسارة 8% - CIFR/IREN تتحرك 10%+ يومياً
-    trailing_stop_pct: float = 5.0             # تتبع أوسع لالتقاط حركات 20-30%
-    take_profit_pct: float = 20.0              # أخذ أرباح عند 20% (المتداولون الناجحون يصبرون)
+    # ─── Stop Loss / Take Profit (Daily Scalper - Strict) ───────────
+    default_stop_loss_pct: float = 1.5         # وقف خسارة 1.5% - حماية صارمة
+    trailing_stop_pct: float = 1.0             # تتبع ضيق للمضاربة السريعة
+    take_profit_pct: float = 3.0               # أخذ أرباح مبدئي 3.0%
 
     # ─── Protection Filters ─────────────────────────────────────
     min_volume: int = 1_000_000                # Minimum volume
@@ -68,20 +68,20 @@ class TradingConfig:
     """Trading Configuration"""
 
     # ─── Strategies ───────────────────────────────────────
-    strategy: str = "weekly_swing"             # استراتيجية المضارب الأسبوعي
+    strategy: str = "daily_scalping"           # استراتيجية المضارب اليومي
 
     # ─── Watchlist ──────────────────────────────────
     watchlist: List[str] = field(default_factory=lambda: [
         "CIFR", "IREN"
     ])
 
-    # ─── Technical Indicators (Weekly Swing) ──────────
+    # ─── Technical Indicators (Daily Scalping) ──────────
     rsi_period: int = 14
-    rsi_overbought: float = 70.0               # خروج عند التشبع القوي بدل الخروج المبكر جداً
-    rsi_oversold: float = 32.0                 # دخول بعد ضغط بيعي أوضح
+    rsi_overbought: float = 70.0               
+    rsi_oversold: float = 30.0                 
 
-    ema_fast: int = 8                          
-    ema_slow: int = 21
+    ema_fast: int = 5                          
+    ema_slow: int = 13
     ema_trend: int = 50
 
     macd_fast: int = 12
@@ -94,12 +94,12 @@ class TradingConfig:
     vwap_enabled: bool = True
 
     # ─── Performance ───────────────────────────────────
-    data_refresh_seconds: float = 30.0         # الأسبوعي لا يحتاج تحديث بالثانية
-    order_timeout_seconds: int = 30            # وقت أطول للأوامر
+    data_refresh_seconds: float = 10.0         # الثواني للمضارب اليومي
+    order_timeout_seconds: int = 15            
 
     # ─── Signal Filters ───────────────────────────────────
-    min_signal_strength: float = 0.72          # تقليل الإشارات الضعيفة في الأسهم المتذبذبة
-    confirmation_candles: int = 2              # تأكيد كافٍ بدون تأخر كبير في الدخول
+    min_signal_strength: float = 0.65          # استجابة أسرع للإشارات
+    confirmation_candles: int = 1              # تأكيد سريع
 
 
 @dataclass
@@ -117,6 +117,36 @@ RISK = RiskConfig()
 TRADING = TradingConfig()
 NOTIFICATIONS = NotificationConfig()
 
+# ─── Dynamic Settings ──────────────────────────────────
+import json
+
+SETTINGS_FILE = "bot_settings.json"
+
+def load_dynamic_settings():
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                data = json.load(f)
+            if "take_profit_pct" in data: RISK.take_profit_pct = float(data["take_profit_pct"])
+            if "stop_loss_pct" in data: RISK.default_stop_loss_pct = float(data["stop_loss_pct"])
+            if "trailing_stop_pct" in data: RISK.trailing_stop_pct = float(data["trailing_stop_pct"])
+        except Exception:
+            pass
+
+def save_dynamic_settings():
+    data = {
+        "take_profit_pct": RISK.take_profit_pct,
+        "stop_loss_pct": RISK.default_stop_loss_pct,
+        "trailing_stop_pct": RISK.trailing_stop_pct
+    }
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+# تحميل الإعدادات المحفوظة إن وجدت
+load_dynamic_settings()
 
 def validate_config():
     """Validate Configuration"""

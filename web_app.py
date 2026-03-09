@@ -444,6 +444,11 @@ async def build_snapshot() -> dict:
             "watchlist": TRADING.watchlist,
             "strategy": TRADING.strategy,
             "paper_trading": PAPER_TRADING,
+            "settings": {
+                "take_profit_pct": RISK.take_profit_pct,
+                "stop_loss_pct": RISK.default_stop_loss_pct,
+                "trailing_stop_pct": RISK.trailing_stop_pct
+            }
         }
     except Exception as e:
         return {"type": "error", "message": str(e)}
@@ -543,6 +548,25 @@ async def api_scan():
             })
         state.signals_buffer = result
         return {"ok": True, "signals": result}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+@app.post("/api/settings")
+async def api_settings(request: Request):
+    try:
+        from config import RISK, save_dynamic_settings
+        data = await request.json()
+        if "take_profit" in data:
+            RISK.take_profit_pct = float(data["take_profit"])
+        if "stop_loss" in data:
+            RISK.default_stop_loss_pct = float(data["stop_loss"])
+        if "trailing" in data:
+            RISK.trailing_stop_pct = float(data["trailing"])
+            
+        save_dynamic_settings()
+        
+        state.add_log("INFO", f"⚙️ تم تحديث النسب: ربح {RISK.take_profit_pct}% | خسارة {RISK.default_stop_loss_pct}% | تتبع {RISK.trailing_stop_pct}%")
+        return {"ok": True, "msg": "تم حفظ الإعدادات"}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
 

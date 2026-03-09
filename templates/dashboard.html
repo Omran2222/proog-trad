@@ -115,6 +115,32 @@
         </div>
     </div>
 
+    <!-- ═══ Settings Panel ═══ -->
+    <div class="card p-4 mb-6 border-blue-900/50">
+        <h2 class="text-lg font-semibold border-b border-slate-700 pb-2 mb-4">
+            <i class="fa-solid fa-sliders mr-2 text-blue-400"></i> إعدادات التداول (تغير مباشر)
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">أخذ الربح (Take Profit) %</label>
+                <input type="number" id="inpTakeProfit" step="0.1" min="0.1" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white outline-none focus:border-blue-500" placeholder="مثال: 3.0">
+            </div>
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">وقف الخسارة (Stop Loss) %</label>
+                <input type="number" id="inpStopLoss" step="0.1" min="0.1" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white outline-none focus:border-blue-500" placeholder="مثال: 1.5">
+            </div>
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">تتبع الأرباح (Trailing) %</label>
+                <input type="number" id="inpTrailing" step="0.1" min="0.1" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white outline-none focus:border-blue-500" placeholder="مثال: 1.0">
+            </div>
+        </div>
+        <div class="mt-4 text-left">
+            <button onclick="saveDynamicSettings()" class="btn btn-info w-full sm:w-auto">
+                <i class="fa-solid fa-floppy-disk"></i> حفظ في ذاكرة البوت
+            </button>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Left Column: Prices & Positions -->
@@ -201,6 +227,34 @@
             setTimeout(() => div.remove(), 4000);
         }
 
+        async function saveDynamicSettings() {
+            const btn = document.querySelector('button[onclick="saveDynamicSettings()"]');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+            btn.disabled = true;
+
+            const payload = {
+                take_profit: parseFloat(document.getElementById('inpTakeProfit').value),
+                stop_loss: parseFloat(document.getElementById('inpStopLoss').value),
+                trailing: parseFloat(document.getElementById('inpTrailing').value)
+            };
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(data.ok) showToast(data.msg, 'success');
+                else showToast(data.msg, 'error');
+            } catch(e) {
+                showToast('خطأ في الاتصال بالخادم', 'error');
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> حفظ في ذاكرة البوت';
+                btn.disabled = false;
+            }
+        }
+
         /* ─── API Call Helper ─── */
         async function apiCall(url, method='POST') {
             try {
@@ -234,6 +288,7 @@
             };
         }
 
+        let settingsLoaded = false;
         function updateDashboard(data) {
             if(data.account) {
                 ui.statEquity.textContent = `$${data.account.equity.toLocaleString()}`;
@@ -241,6 +296,13 @@
             }
             ui.statMarket.textContent = data.market_open ? "مفتوح ✅" : "مغلق ⛔";
             ui.statMarket.className = `text-xl font-bold ${data.market_open ? 'text-green-400' : 'text-red-400'}`;
+
+            if(data.settings && !settingsLoaded) {
+                document.getElementById('inpTakeProfit').value = data.settings.take_profit_pct;
+                document.getElementById('inpStopLoss').value = data.settings.stop_loss_pct;
+                document.getElementById('inpTrailing').value = data.settings.trailing_stop_pct;
+                settingsLoaded = true;
+            }
 
             /* ─── Prices (fix: show best available price) ─── */
             if(data.prices) {
