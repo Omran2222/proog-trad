@@ -18,7 +18,7 @@ from typing import List, Set
 import secrets
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -88,6 +88,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             from starlette.responses import Response
             return Response(status_code=403)
         return RedirectResponse("/login", status_code=302)
+
+
+def _is_authenticated_token(token: str | None) -> bool:
+    if not BOT_PASSWORD:
+        return True
+    return bool(token and token in valid_sessions)
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO,
@@ -349,10 +355,34 @@ async def build_snapshot() -> dict:
         if state.data_engine:
             quotes = state.data_engine.get_multi_quotes(TRADING.watchlist)
             for sym, q in quotes.items():
+                last_trade = state.data_engine.get_latest_trade(sym)
+                last_price = float(last_trade.get("price", 0) or 0)
+                mid = float(q.get("mid", 0) or 0)
+                bid = float(q.get("bid", 0) or 0)
+                ask = float(q.get("ask", 0) or 0)
+
+                display_price = 0.0
+                price_source = "--"
+                if last_price > 0:
+                    display_price = last_price
+                    price_source = "Last"
+                elif mid > 0:
+                    display_price = mid
+                    price_source = "Mid"
+                elif ask > 0:
+                    display_price = ask
+                    price_source = "Ask"
+                elif bid > 0:
+                    display_price = bid
+                    price_source = "Bid"
+
                 prices[sym] = {
-                    "bid": round(q.get("bid", 0), 4),
-                    "ask": round(q.get("ask", 0), 4),
-                    "mid": round(q.get("mid", 0), 4),
+                    "bid": round(bid, 4),
+                    "ask": round(ask, 4),
+                    "mid": round(mid, 4),
+                    "last": round(last_price, 4),
+                    "display_price": round(display_price, 4),
+                    "price_source": price_source,
                     "spread_pct": round(q.get("spread_pct", 0), 3),
                 }
 
@@ -446,6 +476,11 @@ async def dashboard(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
+    token = ws.cookies.get("bot_session")
+    if not _is_authenticated_token(token):
+        await ws.close(code=4401)
+        return
+
     await manager.connect(ws)
     # أرسل snapshot فورى عند الاتصال
     try:
@@ -456,6 +491,8 @@ async def websocket_endpoint(ws: WebSocket):
         async for _ in ws.iter_text():
             pass  # نستقبل أوامر من العميل هنا
     except WebSocketDisconnect:
+        manager.disconnect(ws)
+    finally:
         manager.disconnect(ws)
 
 

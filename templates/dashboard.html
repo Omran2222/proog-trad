@@ -245,8 +245,8 @@
             if(data.prices) {
                 ui.pricesGrid.innerHTML = '';
                 for (const [sym, q] of Object.entries(data.prices)) {
-                    const price = q.mid > 0 ? q.mid : (q.bid > 0 ? q.bid : q.ask);
-                    const priceLabel = q.mid > 0 ? 'Mid' : (q.bid > 0 ? 'Bid' : 'Ask');
+                    const price = q.display_price || 0;
+                    const priceLabel = q.price_source || (q.mid > 0 ? 'Mid' : (q.ask > 0 ? 'Ask' : 'Bid'));
                     const spreadTxt = q.spread_pct > 0 ? `Spread: ${q.spread_pct.toFixed(2)}%` : 'السوق مغلق';
                     ui.pricesGrid.innerHTML += `
                         <div class="bg-slate-800 p-3 rounded flex justify-between items-center border border-slate-700">

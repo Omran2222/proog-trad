@@ -77,8 +77,8 @@ class TradingConfig:
 
     # ─── Technical Indicators (Weekly Swing) ──────────
     rsi_period: int = 14
-    rsi_overbought: float = 65.0               # أحساسية أعلى للخروج المبكر
-    rsi_oversold: float = 35.0                 # أحساسية أعلى للدخول
+    rsi_overbought: float = 70.0               # خروج عند التشبع القوي بدل الخروج المبكر جداً
+    rsi_oversold: float = 32.0                 # دخول بعد ضغط بيعي أوضح
 
     ema_fast: int = 8                          
     ema_slow: int = 21
@@ -98,8 +98,8 @@ class TradingConfig:
     order_timeout_seconds: int = 30            # وقت أطول للأوامر
 
     # ─── Signal Filters ───────────────────────────────────
-    min_signal_strength: float = 0.65          # حد أدنى للإشارة
-    confirmation_candles: int = 3              # 3 شموع تأكيد 
+    min_signal_strength: float = 0.72          # تقليل الإشارات الضعيفة في الأسهم المتذبذبة
+    confirmation_candles: int = 2              # تأكيد كافٍ بدون تأخر كبير في الدخول
 
 
 @dataclass
