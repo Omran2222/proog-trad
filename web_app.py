@@ -419,11 +419,21 @@ async def build_snapshot() -> dict:
                 "day_trades": acc.get("day_trade_count", 0),
             }
 
+        # Market Status Label
+        is_open = state.data_engine.is_market_open() if state.data_engine else False
+        market_label = "مفتوح ✅" if is_open else "مغلق ⛔"
+        if not is_open:
+            from zoneinfo import ZoneInfo
+            ny_time = datetime.now(ZoneInfo('US/Eastern'))
+            if ny_time.weekday() >= 5:
+                market_label = "عطلة الأسبوع 💤"
+
         return {
             "type": "snapshot",
             "time": datetime.now().strftime("%H:%M:%S"),
             "bot_running": state.running,
-            "market_open": state.data_engine.is_market_open() if state.data_engine else False,
+            "market_open": is_open,
+            "market_label": market_label,
             "prices": prices,
             "portfolio": portfolio,
             "positions": positions,
