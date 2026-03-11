@@ -147,6 +147,11 @@ class SmartTradingEngine:
             current_price, signal.stop_loss
         )
         
+        # 🧪 جس النبض (Pulse Check): أول صفقة في اليوم يتم قصرها على سهم واحد لاختبار السوق والبوت
+        if self.risk.daily_pnl.total_trades == 0:
+            logger.info(f"🧪 جس النبض: أول إشارة لليوم على {signal.symbol} - سيتم الدخول بسهم واحد (1) فقط كاختبار")
+            optimal_qty = 1
+        
         if optimal_qty <= 0:
             result["reason"] = "حجم الصفقة = 0 (وقف الخسارة قريب جداً)"
             self.rejected_signals.append(result)
