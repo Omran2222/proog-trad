@@ -395,6 +395,11 @@ class SmartTradingEngine:
         """دورة تداول واحدة"""
         cycle_start = time.time()
         
+        # 0. تحديث/تصفير اليوم (لمضاهاة الأرباح والخسائر اليومية للمضارب اليومي)
+        if self.risk.daily_pnl.date != datetime.now().strftime("%Y-%m-%d"):
+            self.risk.reset_daily()
+            logger.info("🌅 يوم تداول جديد! تم تصفير إحصائيات المحفظة اليومية.")
+
         # 1. مراقبة الصفقات المفتوحة أولاً
         monitor_actions = self.monitor_positions()
         

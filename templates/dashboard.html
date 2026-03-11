@@ -59,7 +59,11 @@
     </header>
 
     <!-- Top Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="card p-4">
+            <p class="text-slate-400 text-sm mb-1">نسبة وتوازن اليوم</p>
+            <h3 id="statDailyPnL" class="text-2xl font-bold font-mono text-slate-300">0.00%</h3>
+        </div>
         <div class="card p-4">
             <p class="text-slate-400 text-sm mb-1">صافي قيمة المحفظة</p>
             <h3 id="statEquity" class="text-2xl font-bold">$0.00</h3>
@@ -207,6 +211,7 @@
         const ui = {
             connStatus: document.getElementById('connStatus'),
             wsTarget: document.getElementById('wsTarget'),
+            statDailyPnL: document.getElementById('statDailyPnL'),
             statEquity: document.getElementById('statEquity'),
             statBP: document.getElementById('statBP'),
             statPosCount: document.getElementById('statPosCount'),
@@ -293,6 +298,12 @@
             if(data.account) {
                 ui.statEquity.textContent = `$${data.account.equity.toLocaleString()}`;
                 ui.statBP.textContent = `$${data.account.buying_power.toLocaleString()}`;
+            }
+            if(data.portfolio && typeof data.portfolio.total_pnl_pct !== 'undefined') {
+                const pct = data.portfolio.total_pnl_pct.toFixed(2);
+                const sign = pct >= 0 ? '+' : '';
+                ui.statDailyPnL.textContent = `${sign}${pct}%`;
+                ui.statDailyPnL.className = `text-2xl font-bold font-mono ${pct >= 0 ? 'text-green-400' : 'text-red-400'}`;
             }
             ui.statMarket.textContent = data.market_open ? "مفتوح ✅" : "مغلق ⛔";
             ui.statMarket.className = `text-xl font-bold ${data.market_open ? 'text-green-400' : 'text-red-400'}`;
